@@ -3,7 +3,7 @@
 #include<string.h>
 #include<windows.h>
 
-long long check_acc;
+long long check_acc, transfer_acc;
 const float f_interest=3.75;
 
 struct Address
@@ -29,7 +29,7 @@ struct
     float amount, interest;
     struct Address address;
 
-}customer, find;
+}customer, find, trnsfr;
 
 void loan();        //for loan purpose
 void remove_transactions(long long);        //if we remove account the transcations need to be removed
@@ -47,6 +47,8 @@ void interest();                //calculate interest of FD
 void remove_account();          //close a bank account
 void make_changes(long long);       //make changes to file 
 void fd();                      //for fixed deposist purposes
+void transfer();            //for tranferring money to another account
+void transfer_changes(long long);   
 
 int main()
 {
@@ -144,7 +146,7 @@ void menu()
 
         //menu layout
         printf("\n****************************************************************\n");
-        printf("1. Create Bank Account\n2. Deposit / Withdraw\n3. View Transactions\n4. Create a Fixed Deposit\n5. Get Customer List\n6. Update Information\n7. Calculate Interest on Fixed Deposit\n8. Apply for Loan\n9. Close Bank Account\n10. Exit\n");
+        printf("1. Create Bank Account\n2. Deposit / Withdraw\n3. View Transactions\n4. Create a Fixed Deposit\n5. Get Customer List\n6. Update Information\n7. Calculate Interest on Fixed Deposit\n8. Apply for Loan\n9. Tranfer Money\n10. Close Bank Account\n11. Exit\n");
         printf("\n****************************************************************\n");
 
         printf("Please Enter your Choice: ");
@@ -177,10 +179,13 @@ void menu()
             case 8: loan();
                     break;
 
-            case 9: remove_account();
+            case 9: transfer();
                     break;
 
-            case 10: quitting();
+            case 10: remove_account();
+                    break;
+
+            case 11: quitting();
 
             default: printf("\n===> Enter a Valid Option!<=== \n");
         }
@@ -759,6 +764,133 @@ void loan()
 
 }
 
+
+void transfer()
+{
+    float tran_amt;
+    int flag=0, flag_tran=0;
+
+    TRAN_ACC:
+    printf("Enter your Bank Account: ");
+    scanf("%lld", &check_acc);
+
+    FILE *rec=fopen("Records.dat", "a+");
+
+    while(fscanf(rec,"%s %s %lld %lld %lld %f %f %s %s %s", customer.name, customer.dob, &customer.contact_number, &customer.aadhar_no, &customer.account_no, &customer.amount, &customer.interest, customer.address.house_no, customer.address.city, customer.address.state) != EOF)
+    {
+        if(customer.account_no == check_acc)
+        {
+            flag=1;
+            fclose(rec);
+            flag=0;
+            goto TRANSFER;
+        }
+    }
+
+    if(flag==0)
+    {
+        fclose(rec);
+
+        printf("Enter a Valid Account Number!\n");
+        printf("\n****************************************************************\n");
+        printf("1.Enter Account Number again\n 2. Skip\n");
+        printf("\n****************************************************************\n");
+
+        while (1)
+        {
+            printf("Select from above options: ");
+            scanf("%d", &opt);
+
+            if(opt==1)
+                goto TRAN_ACC;
+
+            else if(opt == 2)
+                goto SKIP_TRAN;
+
+            else
+                printf("Enter a valid Option!\n");
+
+        }
+
+    }
+
+    TRANFER:
+    printf("Enter Account Number to transfer to: ");
+    scanf("%lld", &transfer_acc);
+
+    printf("Enter Amount to Transfer: ");
+    scanf("%f", &tran_amt);
+
+    if(tran_amt < customer.amount)
+    {
+        printf("Amount Unavailble in Account!\n");
+        goto SKIP_TRAN:
+    }
+
+    while(fscanf(rec,"%s %s %lld %lld %lld %f %f %s %s %s", trnsfr.name, trnsfr.dob, &trnsfr.contact_number, &trnsfr.aadhar_no, &trnsfr.account_no, &trnsfr.amount, &trnsfr.interest, trnsfr.address.house_no, trnsfr.address.city, trnsfr.address.state) != EOF)
+    {
+        if(trnsfr.account_no == check_acc)
+        {
+            flag_tran=1;
+            break;
+        }
+
+    }
+
+
+    if(flag_tran == 0)  //if amt to tranfer is not in same bank
+    {
+        customer.amount-=tran_amt;
+        make_changes(check_acc);
+        printf("Amount Transferred to Another Bank's Account no: %lld !\n", transfer_acc);
+    }
+
+    else if(flag_tran==1)      //if amt to tranfer is in same bank
+    {
+        customer.amount-=tran_amt;
+        trnsfr.amount+=tran_amt;
+
+        make_changes(check_acc);
+        transfer_changes(transfer_acc);
+
+        printf("Amount Transferred to Same Bank's Account no: %lld !\n", transfer_acc);
+    }
+    
+
+    SKIP_TRAN:
+    quit_or_not();
+
+}
+
+void tranfer_changes(long long transfer_account)
+{
+    FILE *fptr=fopen("Records.dat", "a+");
+    FILE *news=fopen("new.dat", "w");
+
+    while(fscanf(fptr,"%s %s %lld %lld %lld %f %f %s %s %s", find.name, find.dob, &find.contact_number, &find.aadhar_no, &find.account_no, &find.amount, &find.interest, find.address.house_no, find.address.city, find.address.state) != EOF)
+    {
+
+        if(find.account_no == act_no)
+        {
+            fprintf(news,"%s %s %lld %lld %lld %f %f %s %s %s\n", trnsfr.name, trnsfr.dob, trnsfr.contact_number, trnsfr.aadhar_no, trnsfr.account_no, trnsfr.amount, trnsfr.interest, trnsfr.address.house_no, trnsfr.address.city, trnsfr.address.state);
+        }
+
+        else
+        {
+            fprintf(news,"%s %s %lld %lld %lld %f %f %s %s %s\n", find.name, find.dob, find.contact_number, find.aadhar_no, find.account_no, find.amount, find.interest, find.address.house_no, find.address.city, find.address.state);
+        }
+
+    }
+
+    fclose(fptr);
+    fclose(news);
+    remove("Records.dat");
+    rename("new.dat","Records.dat");
+}
+
+
+//Deepanshu Narang, ECE B, 1802328
+//Deepanshu Narang, ECE B, 1802328
 //Deepanshu Narang, ECE B, 1802328
 //Deepanshu Narang, ECE B, 1802328
 //Deepanshu Narang, ECE B, 1802328
